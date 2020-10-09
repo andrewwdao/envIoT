@@ -1,0 +1,7 @@
+mosquitto_pub -h 52.231.156.62 -m '{"temp":28.2}' -t "thietbi01/trai01/chuong01/data" -u "mqtt_user_name" -P "mqtt"
+mosquitto_pub -h 52.231.156.62 -m '{"temp":28.2,"co2":20}' -t "thietbi01/trai01/chuong01/data" -u "mqtt_user_name" -P "mqtt"
+mosquitto_pub -h 52.231.156.62 -m '1' -t "thietbi01/trai01/chuong01/status" -u "mqtt_user_name" -P "mqtt"
+mosquitto_pub -h 52.231.156.62 -m '0' -t "thietbi01/trai01/chuong01/status" -u "mqtt_user_name" -P "mqtt"
+
+mosquitto_sub -h 52.231.156.62 -t thietbi01/trai01/chuong01/status/# -u mqtt_user_name -P mqtt
+mosquitto_sub -h 52.231.156.62 -t thietbi01/trai01/chuong01/data/# -u mqtt_user_name -P mqtt
