@@ -39,7 +39,7 @@ void monitoring_task(void *arg)
 {
 	for(;;){
 		ESP_LOGI(TAG, "free heap: %d\n",esp_get_free_heap_size());
-		vTaskDelay(pdMS_TO_TICKS(10000));
+		vTaskDelay(pdMS_TO_TICKS(30000));
 	}
 }
 
