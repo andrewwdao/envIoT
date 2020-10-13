@@ -18,7 +18,6 @@ extern "C" {
 #endif
 
 #include "esp_err.h"
-#include "esp_netif.h"
 
 // ------ Public constants ------------------------------------
 // #ifdef CONFIG_CONNECT_ETHERNET

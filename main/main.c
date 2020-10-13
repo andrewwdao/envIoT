@@ -14,6 +14,10 @@
 #include "esp_log.h"
 
 #include "network.h"
+#include "mqtt.h"
+#include "protocol_examples_common.h"
+#include "esp_event.h"
+#include "esp_netif.h"
 // ------ Private constants -----------------------------------
 /**
  * @note config parameters via "idf.py menuconfig
@@ -39,7 +43,7 @@ void monitoring_task(void *arg)
 {
 	for(;;){
 		ESP_LOGI(TAG, "free heap: %d\n",esp_get_free_heap_size());
-		vTaskDelay(pdMS_TO_TICKS(30000));
+		DELAY_MS(1000);
 	}
 }
 
@@ -74,13 +78,27 @@ void app_main(void)
         1);                  /* CoreID */
     
     network_init();
-    for (;;){
-        network_start();
+    //for (;;){
+    //    network_start();
+    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
+     * Read "Establishing Wi-Fi or Ethernet Connection" section in
+     * examples/protocols/README.md for more information about this function.
+     */
+    ESP_ERROR_CHECK(example_connect());
+
         ESP_LOGW(TAG, "Hellooooooooooooo wifi");
-        DELAY_MS(5000);
-        network_stop();
-        ESP_LOGW(TAG, "Byebyeeeeeeeeeeee wifi");
-        DELAY_MS(5000);
-    }
+        mqtt_start();
+        mqtt_sub(STATUS_TOPIC, 1);
+        //for (;;) {
+            //DELAY_MS(3000);
+            //mqtt_pub(CMD_TOPIC, "HELLOOOOOO",1,0);
+            //DELAY_MS(3000);
+            //mqtt_pub(STATUS_TOPIC, "who are you???",1,0);
+        //}
+        // DELAY_MS(5000);
+        // network_stop();
+        // ESP_LOGW(TAG, "Byebyeeeeeeeeeeee wifi");
+        // DELAY_MS(5000);
+    //}
     
 }

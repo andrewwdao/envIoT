@@ -8,6 +8,8 @@
  * ref: esp-idf\examples\common_components\protocol_examples_common
  *      https://github.com/espressif/esp-idf/issues/894 
  --------------------------------------------------------------*/
+#ifndef __NETWORK_C
+#define __NETWORK_C
 #include <string.h>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
@@ -85,6 +87,7 @@ static esp_netif_t *_eth_netif = NULL;
 
 #ifdef CONFIG_CONNECT_IPV6
 static esp_ip6_addr_t _ipv6_addr;
+
 /* types of ipv6 addresses to be displayed on ipv6 events */
 static const char *_ipv6_addr_types[] = {
     "ESP_IP6_ADDR_IS_UNKNOWN",
@@ -156,8 +159,8 @@ static void __on_got_ipv6(void *arg, esp_event_base_t event_base,
     //     return;
     // }
     esp_ip6_addr_type_t ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
-    ESP_LOGI(TAG, "Got IPv6 event: Interface %s address: " IPV6STR ", type: %s", esp_netif_get_desc(event->esp_netif),
-            IPV62STR(event->ip6_info.ip), _ipv6_addr_types[ipv6_type]);
+    ESP_LOGW(TAG, "- IPv6 address:" IPV6STR, IPV62STR(event->ip6_info.ip));
+    ESP_LOGW(TAG, "- Type: %s", _ipv6_addr_types[ipv6_type]);
     if (ipv6_type == CONNECT_PREFERRED_IPV6_TYPE) {
         memcpy(&_ipv6_addr, &event->ip6_info.ip, sizeof(_ipv6_addr));
         xSemaphoreGive(_semph_got_ips);
@@ -170,59 +173,44 @@ static void __on_got_ipv6(void *arg, esp_event_base_t event_base,
 
 esp_event_handler_instance_t _ins_wifi_event;
 esp_event_handler_instance_t _ins_wifi_got_ip;
-
-// /**
-//  * @brief event handler for disconnection
-//  */
-// static void __on_wifi_start(void *arg, esp_event_base_t event_base,
-//                                int32_t event_id, void *event_data)
-// {
-//     ESP_LOGI(TAG, "Starting wifi...\n");
-//     ESP_LOGI(TAG, "Connecting to %s...\n", CONFIG_WIFI_SSID);
-//     ESP_ERROR_CHECK(esp_wifi_connect());
-// }
-// /**
-//  * @brief event handler for disconnection
-//  */
-// static void __on_wifi_disconnect(void *arg, esp_event_base_t event_base,
-//                                int32_t event_id, void *event_data)
-// {
-//     ESP_LOGI(TAG, "Wi-Fi disconnected, reconnect to %s...\n", CONFIG_WIFI_SSID);
-//     esp_err_t err = esp_wifi_connect();
-//     if (err == ESP_ERR_WIFI_NOT_STARTED) return;
-//     ESP_ERROR_CHECK(err);
-// }
+#ifdef CONFIG_CONNECT_IPV6
+esp_event_handler_instance_t _ins_wifi_got_ipv6;
+#endif // CONFIG_CONNECT_IPV6
 
 /**
  * @brief handler for Wifi events
  */
-static void __on_wifi_event(void* arg, esp_event_base_t event_base,
-                               int32_t event_id, void* event_data)
+static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
+                            int32_t event_id, void* event_data)
 {
-    if (event_id == WIFI_EVENT_STA_START) {
+    switch (event_id) {
+    case WIFI_EVENT_STA_START:
         ESP_LOGI(TAG, "Starting wifi...\n");
         ESP_LOGI(TAG, "Connecting to %s...\n", CONFIG_WIFI_SSID);
         ESP_ERROR_CHECK(esp_wifi_connect());
-    } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        break;
+    case WIFI_EVENT_STA_CONNECTED:
+#ifdef CONFIG_CONNECT_IPV6
+        esp_netif_create_ip6_linklocal(esp_netif);
+#endif
+#if CONFIG_CONNECT_ETHERNET
+        __eth_stop();
+        _activ_if--;
+#endif
+        // esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
+        // ESP_LOGI(TAG, "Ethernet Up");
+        // ESP_LOGI(TAG, "HW MAC Addr: %02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+        break;
+    case WIFI_EVENT_STA_DISCONNECTED:
         ESP_LOGI(TAG, "Wi-Fi disconnected, reconnect to %s...\n", CONFIG_WIFI_SSID);
         esp_err_t err = esp_wifi_connect();
         if (err == ESP_ERR_WIFI_NOT_STARTED) return;
         ESP_ERROR_CHECK(err);
+        break;
+    default:
+        break;
     }
 }
-
-#ifdef CONFIG_CONNECT_IPV6
-
-esp_event_handler_instance_t _ins_wifi_connectv6;
-esp_event_handler_instance_t _ins_wifi_got_ipv6;
-
-static void on_wifi_connect(void *esp_netif, esp_event_base_t event_base,
-                            int32_t event_id, void *event_data)
-{
-    esp_netif_create_ip6_linklocal(esp_netif);
-}
-
-#endif // CONFIG_CONNECT_IPV6
 
 /**
  * @brief wifi start function with power saving mode
@@ -261,18 +249,14 @@ static esp_netif_t* __wifi_start(void)
     // Register user defined event handers
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                ESP_EVENT_ANY_ID,
-                                               &__on_wifi_event, NULL,
+                                               &__on_wifi_event, sta_netif,
                                                &_ins_wifi_event));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                IP_EVENT_STA_GOT_IP,
                                                &__on_got_ip, NULL,
                                                &_ins_wifi_got_ip));
 #ifdef CONFIG_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                WIFI_EVENT_STA_CONNECTED,
-                                                &on_wifi_connect, netif,
-                                                &_ins_wifi_connectv6));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                 IP_EVENT_GOT_IP6,
                                                 &__on_got_ipv6, NULL,
                                                 &_ins_wifi_got_ipv6));
@@ -336,9 +320,6 @@ static void __wifi_stop(void)
                                                  IP_EVENT_STA_GOT_IP,
                                                  _ins_wifi_got_ip));
 #ifdef CONFIG_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT,
-                                                 WIFI_EVENT_STA_CONNECTED,
-                                                 _ins_wifi_connectv6));
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT,
                                                  IP_EVENT_GOT_IP6,
                                                  _ins_wifi_got_ipv6));
@@ -363,58 +344,46 @@ static esp_eth_phy_t *_phy = NULL;
 static void *_eth_glue = NULL;
 esp_event_handler_instance_t _ins_eth_event;
 esp_event_handler_instance_t _ins_eth_gotip;
+#ifdef CONFIG_CONNECT_IPV6
+esp_event_handler_instance_t _ins_eth_gotipv6;
+#endif // CONFIG_CONNECT_IPV6
 
 /**
  * @brief Event handler for Ethernet events
  */
-static void __on_eth_event(void *arg, esp_event_base_t event_base,
-                                int32_t event_id, void *event_data)
+static void __on_eth_event(void *esp_netif, esp_event_base_t event_base,
+                           int32_t event_id, void *event_data)
 {
     uint8_t mac_addr[6] = {0};
     /* we can get the ethernet driver handle from event data */
     esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
 
     switch (event_id) {
-    case ETHERNET_EVENT_CONNECTED:
-        esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
-        ESP_LOGI(TAG, "Ethernet Up");
-        ESP_LOGI(TAG, "HW MAC Addr: %02x:%02x:%02x:%02x:%02x:%02x",
-                 mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-        break;
-    case ETHERNET_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG, "Ethernet Down");
-        break;
     case ETHERNET_EVENT_START:
         ESP_LOGI(TAG, "Ethernet Started");
         break;
     case ETHERNET_EVENT_STOP:
         ESP_LOGI(TAG, "Ethernet Stopped");
         break;
-    default:
-        break;
-    }
-}
-
-#ifdef CONFIG_CONNECT_IPV6
-
-esp_event_handler_instance_t _ins_eth_connectv6;
-esp_event_handler_instance_t _ins_eth_gotipv6;
-
-/** Event handler for Ethernet events */
-static void __on_eth_event(void *esp_netif, esp_event_base_t event_base,
-                         int32_t event_id, void *event_data)
-{
-    switch (event_id) {
     case ETHERNET_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "Ethernet Link Up");
+#ifdef CONFIG_CONNECT_IPV6
         esp_netif_create_ip6_linklocal(esp_netif);
+#endif
+#if CONFIG_CONNECT_WIFI
+        __wifi_stop();
+        _activ_if--;
+#endif
+        esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
+        ESP_LOGI(TAG, "Ethernet Up");
+        ESP_LOGI(TAG, "HW MAC Addr: %02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+        break;
+    case ETHERNET_EVENT_DISCONNECTED:
+        ESP_LOGI(TAG, "Ethernet Down");
         break;
     default:
         break;
     }
 }
-
-#endif // CONFIG_CONNECT_IPV6
 
 static esp_netif_t* __eth_start(void)
 {
@@ -455,7 +424,7 @@ static esp_netif_t* __eth_start(void)
     // Register user defined event handers
     ESP_ERROR_CHECK(esp_event_handler_instance_register(ETH_EVENT,
                                                ESP_EVENT_ANY_ID,
-                                               &__on_eth_event, NULL,
+                                               &__on_eth_event, eth_netif,
                                                &_ins_eth_event));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                IP_EVENT_ETH_GOT_IP,
@@ -463,10 +432,6 @@ static esp_netif_t* __eth_start(void)
                                                &_ins_eth_gotip));
 
 #ifdef CONFIG_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(ETH_EVENT,
-                                               ETHERNET_EVENT_CONNECTED,
-                                               &__on_eth_event, netif,
-                                               &_ins_eth_connectv6));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                IP_EVENT_GOT_IP6,
                                                &__on_got_ipv6, NULL,
@@ -546,9 +511,9 @@ static void __eth_stop(void)
                                                 _ins_eth_gotip));
 
 #ifdef CONFIG_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(ETH_EVENT,
-                                                ETHERNET_EVENT_CONNECTED,
-                                                _ins_eth_connectv6));
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(ETH_EVENT,
+    //                                             ETHERNET_EVENT_CONNECTED,
+    //                                             _ins_eth_connectv6));
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT,
                                                 IP_EVENT_GOT_IP6,
                                                 _ins_eth_gotipv6));
@@ -639,3 +604,5 @@ esp_err_t network_stop(void)
 //     free(expected_desc);
 //     return netif;
 // }
+
+#endif

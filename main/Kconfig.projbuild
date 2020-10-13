@@ -1,5 +1,23 @@
 menu "Environment IoT Configuration"
 
+    config FARM_NAME
+        string "Farm name"
+        default "01"
+        help
+            Name of the farm
+    
+    config BARN_NAME
+        string "Barn name"
+        default "01"
+        help
+            Name of the Barn
+    
+    config DEVICE_NAME
+        string "Device name"
+        default "01"
+        help
+            Name of the device
+
     config CONNECT_WIFI
         bool "Enable WiFi interface"
         default y
@@ -301,4 +319,16 @@ menu "Environment IoT Configuration"
         help
             Choose this option to connect with static IP.
 
+    config BROKER_URL
+        string "Broker URL"
+        default "mqtt://mqtt.eclipse.org"
+        help
+            URL of the broker to connect to
+
+    config BROKER_URL_FROM_STDIN
+        bool
+        default y if BROKER_URL = "FROM_STDIN"
+
+
 endmenu
+
