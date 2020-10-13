@@ -1,5 +1,55 @@
-menu "Environment IoT Network Configuration"
+menu "EnvIoT MQTT Network Configuration"
 
+	config FARM_NAME
+        string "Farm name"
+        default "01"
+        help
+            Name of the farm
+    
+    config BARN_NAME
+        string "Barn name"
+        default "01"
+        help
+            Name of the Barn
+    
+    config DEVICE_NAME
+        string "Device name"
+        default "01"
+        help
+            Name of the device
+
+    config BROKER_URL
+        string "MQTT Broker URL"
+        default "mqtt://mqtt.eclipse.org"
+        help
+            URL of the broker to connect to
+
+    config BROKER_HOST
+        string "MQTT server domain (ipv4 as string)"
+        default "52.231.156.62"
+        help
+            URL of the broker to connect to
+    
+    config BROKER_PORT
+        int "MQTT Broker Port"
+        default 1883
+        help
+            Port of the broker to connect to
+    
+    config MQTT_USERNAME
+        string "MQTT username"
+        default "mqtt_user_name"
+        help
+            MQTT Username to connect to the broker
+
+    config MQTT_PASSWORD
+        string "MQTT password"
+        default "mqtt"
+        help
+            MQTT Password to connect to the broker
+			
+			
+			
 	config CONNECT_WIFI
         bool "Enable WiFi interface"
         default y
@@ -301,6 +351,18 @@ menu "Environment IoT Network Configuration"
         help
             Choose this option to connect with static IP.
 
+
+
+    config LED_PIN
+        int "Indicating LED pin"
+        default 2
+        help
+            Choose pin of the Indicating LED.
     
+    config LED_INTERVAL
+        int "Interval for blinking the LED (ms)"
+        default 500
+        help
+            Interval for blinking the LED (ms).
 endmenu
 

@@ -50,7 +50,7 @@ esp_err_t network_stop(void);
  * In that case the get_netif_from_desc() should be used
  * to get esp-netif pointer based on interface description
  */
-esp_netif_t *get_netif(void);
+// esp_netif_t *get_netif(void);
 // /**
 //  * @brief Returns esp-netif pointer created by connect() described by
 //  * the supplied desc field

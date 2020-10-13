@@ -30,6 +30,7 @@
 #include "lwip/sys.h"
 
 #include "network.h"
+#include "led.h"
 
 // ------ Private constants -----------------------------------
 /**
@@ -540,6 +541,9 @@ esp_err_t network_init(void)
     if (_semph_got_ips != NULL) {
         return ESP_ERR_INVALID_STATE;
     }
+    //init indicating LED
+    led_init();
+    led_blink();
     // Initialize TCP/IP network interface (should be called only once in application)
     ESP_ERROR_CHECK(esp_netif_init());
     // Create default event loop that running in background
@@ -585,16 +589,16 @@ esp_err_t network_stop(void)
     return ESP_OK;
 }
 
-esp_netif_t *get_netif(void)
-{
-#if CONFIG_CONNECT_WIFI
-    if (_sta_netif != NULL) return _sta_netif;
-#endif
-#if CONFIG_CONNECT_ETHERNET
-    if (_eth_netif != NULL) return _eth_netif;
-#endif
-    return NULL;
-}
+// esp_netif_t *get_netif(void)
+// {
+// #if CONFIG_CONNECT_WIFI
+//     if (_sta_netif != NULL) return _sta_netif;
+// #endif
+// #if CONFIG_CONNECT_ETHERNET
+//     if (_eth_netif != NULL) return _eth_netif;
+// #endif
+//     return NULL;
+// }
 
 // esp_netif_t *get_netif_from_desc(const char *desc)
 // {

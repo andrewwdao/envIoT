@@ -12,12 +12,10 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
-
-#include "network.h"
-#include "mqtt.h"
-#include "protocol_examples_common.h"
 #include "esp_event.h"
 #include "esp_netif.h"
+
+#include "mqtt_network.h"
 // ------ Private constants -----------------------------------
 /**
  * @note config parameters via "idf.py menuconfig
@@ -57,15 +55,6 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
     
-    //-------------- Network task ------------------
-    // xTaskCreate(
-    //     &network_task,    /* Task Function */
-    //     "network_task",   /* Name of Task */
-    //     4096,          /* Stack size of Task */
-    //     NULL,           /* Parameter of the task */
-    //     3,              /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
-    //     NULL);          /* Task handle to keep track of created task */
-
     //------------ monitoring task -----------------
     //A task on core 2 that monitors free heap memory - should be removed on production
     xTaskCreatePinnedToCore(
@@ -78,36 +67,20 @@ void app_main(void)
         1);                  /* CoreID */
     
     network_init();
-    //for (;;){
-    //    network_start();
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-
     ESP_ERROR_CHECK(network_start());
-
-    //ESP_ERROR_CHECK(example_connect());
-
-        ESP_LOGW(TAG, "Hellooooooooooooo wifi");
-        mqtt_start();
-        DELAY_MS(2000);
-        mqtt_sub(STATUS_TOPIC,1); //topic, qos
-        DELAY_MS(2000);
-        mqtt_unsub(STATUS_TOPIC); //topic
-        
-        for (;;) {
-            mqtt_pub(DATA_TOPIC, "{temp:30.05}",1,0); //topic, data, qos, retain
-            DELAY_MS(3000);
-            mqtt_pub(DATA_TOPIC, "{temp:15.07}",1,0); //topic, data, qos, retain
-            DELAY_MS(3000);
-            mqtt_pub(CMD_TOPIC, "command here",1,0); //topic, data, qos, retain
-            DELAY_MS(3000);
-        }
-        // DELAY_MS(5000);
-        // network_stop();
-        // ESP_LOGW(TAG, "Byebyeeeeeeeeeeee wifi");
-        // DELAY_MS(5000);
-    //}
+    ESP_LOGW(TAG, "Hellooooooooooooo wifi");
+    mqtt_start();
+    DELAY_MS(2000);
+    mqtt_sub(STATUS_TOPIC,1); //topic, qos
+    DELAY_MS(2000);
+    mqtt_unsub(STATUS_TOPIC); //topic
     
+    for (;;) {
+        mqtt_pub(DATA_TOPIC, "{temp:30.05}",1,0); //topic, data, qos, retain
+        DELAY_MS(3000);
+        mqtt_pub(DATA_TOPIC, "{temp:15.07}",1,0); //topic, data, qos, retain
+        DELAY_MS(3000);
+        mqtt_pub(CMD_TOPIC, "command here",1,0); //topic, data, qos, retain
+        DELAY_MS(3000);
+    }
 }

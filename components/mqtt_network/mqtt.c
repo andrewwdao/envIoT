@@ -18,6 +18,7 @@
 #include "mqtt_client.h"
 
 #include "mqtt.h"
+#include "led.h"
 
 // ------ Private constants -----------------------------------
 // ------ Private function prototypes -------------------------
@@ -44,11 +45,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGW(TAG, "MQTT Connected!");
+            led_lit();
             esp_mqtt_client_publish(client, STATUS_TOPIC, "1", 0, 1, 0); //client, topic, data, len, qos, retain  
             esp_mqtt_client_subscribe(client, CMD_TOPIC, 1); //client, topic, qos
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "MQTT Disconnected!");
+            led_blink();
             break;
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGW(TAG, " - Subscribed, msg_id=%d", event->msg_id);
@@ -65,12 +68,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
             break;
         case MQTT_EVENT_ERROR:
             ESP_LOGI(TAG, "MQTT event Error!");
+            led_off();
             break;
         case MQTT_EVENT_BEFORE_CONNECT:
             ESP_LOGI(TAG, "MQTT event before connect");
             break;
         default:
-            // ESP_LOGI(TAG, "Other event id:%d", event->event_id);
             break;
     }
 }
