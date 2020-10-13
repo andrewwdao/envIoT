@@ -84,17 +84,26 @@ void app_main(void)
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
      * examples/protocols/README.md for more information about this function.
      */
-    ESP_ERROR_CHECK(example_connect());
+
+    ESP_ERROR_CHECK(network_start());
+
+    //ESP_ERROR_CHECK(example_connect());
 
         ESP_LOGW(TAG, "Hellooooooooooooo wifi");
         mqtt_start();
-        mqtt_sub(STATUS_TOPIC, 1);
-        //for (;;) {
-            //DELAY_MS(3000);
-            //mqtt_pub(CMD_TOPIC, "HELLOOOOOO",1,0);
-            //DELAY_MS(3000);
-            //mqtt_pub(STATUS_TOPIC, "who are you???",1,0);
-        //}
+        DELAY_MS(2000);
+        mqtt_sub(STATUS_TOPIC,1); //topic, qos
+        DELAY_MS(2000);
+        mqtt_unsub(STATUS_TOPIC); //topic
+        
+        for (;;) {
+            mqtt_pub(DATA_TOPIC, "{temp:30.05}",1,0); //topic, data, qos, retain
+            DELAY_MS(3000);
+            mqtt_pub(DATA_TOPIC, "{temp:15.07}",1,0); //topic, data, qos, retain
+            DELAY_MS(3000);
+            mqtt_pub(CMD_TOPIC, "command here",1,0); //topic, data, qos, retain
+            DELAY_MS(3000);
+        }
         // DELAY_MS(5000);
         // network_stop();
         // ESP_LOGW(TAG, "Byebyeeeeeeeeeeee wifi");

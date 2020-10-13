@@ -29,6 +29,7 @@ extern "C" {
  */
 esp_err_t mqtt_start(void);
 int mqtt_sub(const char *topic, int qos);
+int mqtt_unsub(const char *topic);
 int mqtt_pub(const char *topic, const char *data, int qos, int retain);
 
 /**

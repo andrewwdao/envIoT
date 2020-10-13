@@ -12,20 +12,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include "esp_wifi.h"
-#include "esp_system.h"
-#include "nvs_flash.h"
 #include "esp_event.h"
-#include "esp_netif.h"
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
-
-#include "lwip/sockets.h"
-#include "lwip/dns.h"
-#include "lwip/netdb.h"
 
 #include "esp_log.h"
 #include "mqtt_client.h"
@@ -57,75 +44,70 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGW(TAG, "MQTT Connected!");
-            esp_mqtt_client_subscribe(client,CMD_TOPIC,1); //client, topic, qos
+            esp_mqtt_client_publish(client, STATUS_TOPIC, "1", 0, 1, 0); //client, topic, data, len, qos, retain  
+            esp_mqtt_client_subscribe(client, CMD_TOPIC, 1); //client, topic, qos
             break;
         case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+            ESP_LOGI(TAG, "MQTT Disconnected!");
             break;
-
         case MQTT_EVENT_SUBSCRIBED:
-            ESP_LOGW(TAG, "Subscribed, msg_id=%d", event->msg_id);
-            ESP_LOGW(TAG, " - Topic: %.*s", event->topic_len, event->topic);
+            ESP_LOGW(TAG, " - Subscribed, msg_id=%d", event->msg_id);
             break;
         case MQTT_EVENT_UNSUBSCRIBED:
-            ESP_LOGW(TAG, "Unsubscribed, msg_id=%d", event->msg_id);
-            ESP_LOGW(TAG, " - Topic: %.*s", event->topic_len, event->topic);
+            ESP_LOGW(TAG, " - Unsubscribed, msg_id=%d", event->msg_id);
             break;
         case MQTT_EVENT_PUBLISHED:
-            ESP_LOGI(TAG, "Published, msg_id=%d", event->msg_id);
-            ESP_LOGI(TAG, " - Topic: %.*s", event->topic_len, event->topic);
-            ESP_LOGI(TAG, " - Data: %.*s", event->data_len, event->data);
+            ESP_LOGW(TAG, " - Published, msg_id=%d", event->msg_id);
             break;
         case MQTT_EVENT_DATA:
             ESP_LOGW(TAG, "Cmd Received from: %.*s", event->topic_len, event->topic);
             ESP_LOGW(TAG, " - Cmd: %.*s", event->data_len, event->data);
             break;
         case MQTT_EVENT_ERROR:
-            ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+            ESP_LOGI(TAG, "MQTT event Error!");
+            break;
+        case MQTT_EVENT_BEFORE_CONNECT:
+            ESP_LOGI(TAG, "MQTT event before connect");
             break;
         default:
-            ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+            // ESP_LOGI(TAG, "Other event id:%d", event->event_id);
             break;
     }
 }
 int mqtt_sub(const char *topic, int qos)
 {
-    return esp_mqtt_client_subscribe(_client, topic, qos); //client, topic, qos
+    int msg_id = esp_mqtt_client_subscribe(_client, topic, qos); //client, topic, qos
+    ESP_LOGW(TAG, "Subscribing Topic: %.*s", strlen(topic), topic);
+    return msg_id;
+}
+int mqtt_unsub(const char *topic)
+{
+    int msg_id = esp_mqtt_client_unsubscribe(_client, topic); //client, topic, qos
+    ESP_LOGW(TAG, "Unsubscribing Topic: %.*s", strlen(topic), topic);
+    return msg_id;
 }
 int mqtt_pub(const char *topic, const char *data, int qos, int retain)
 {
-    return esp_mqtt_client_publish(_client, topic, data, 0, qos, retain); //client, topic, data, len, qos, retain  
+    int msg_id = esp_mqtt_client_publish(_client, topic, data, 0, qos, retain); //client, topic, data, len, qos, retain  
+    ESP_LOGW(TAG, "Publishing Topic: %.*s", strlen(topic), topic);
+    ESP_LOGW(TAG, " - Data: %.*s", strlen(data), data);
+    return msg_id;
 }
 esp_err_t mqtt_start(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = CONFIG_BROKER_URL,
+        // .uri = CONFIG_BROKER_URL,
+        .host = CONFIG_BROKER_HOST,
+        .port = CONFIG_BROKER_PORT,
+        .username = CONFIG_MQTT_USERNAME,
+        .password = CONFIG_MQTT_PASSWORD,
+        .lwt_topic = STATUS_TOPIC,
+        .lwt_msg = "0",
+        .lwt_msg_len = 1,
+        .lwt_qos = 1,
+        .lwt_retain = 0,
+        .keepalive = 120
     };
-#if CONFIG_BROKER_URL_FROM_STDIN
-    char line[128];
-
-    if (strcmp(mqtt_cfg.uri, "FROM_STDIN") == 0) {
-        int count = 0;
-        printf("Please enter url of mqtt broker\n");
-        while (count < 128) {
-            int c = fgetc(stdin);
-            if (c == '\n') {
-                line[count] = '\0';
-                break;
-            } else if (c > 0 && c < 127) {
-                line[count] = c;
-                ++count;
-            }
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-        mqtt_cfg.uri = line;
-        printf("Broker url: %s\n", line);
-    } else {
-        ESP_LOGE(TAG, "Configuration mismatch: wrong broker url");
-        abort();
-    }
-#endif /* CONFIG_BROKER_URL_FROM_STDIN */
-
     _client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(_client, ESP_EVENT_ANY_ID, mqtt_event_handler, _client);
     esp_mqtt_client_start(_client);

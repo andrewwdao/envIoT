@@ -121,7 +121,20 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# Environment IoT Configuration
+# Environment IoT MQTT Configuration
+#
+CONFIG_FARM_NAME="01"
+CONFIG_BARN_NAME="01"
+CONFIG_DEVICE_NAME="01"
+CONFIG_BROKER_URL="mqtt://mqtt.eclipse.org"
+CONFIG_BROKER_HOST="52.231.156.62"
+CONFIG_BROKER_PORT=1883
+CONFIG_MQTT_USERNAME="mqtt_user_name"
+CONFIG_MQTT_PASSWORD="mqtt"
+# end of Environment IoT MQTT Configuration
+
+#
+# Environment IoT Network Configuration
 #
 CONFIG_CONNECT_WIFI=y
 CONFIG_WIFI_SSID="Home"
@@ -145,15 +158,14 @@ CONFIG_CONNECT_IPV6_PREF_LOCAL_LINK=y
 # CONFIG_CONNECT_IPV6_PREF_SITE_LOCAL is not set
 # CONFIG_CONNECT_IPV6_PREF_UNIQUE_LOCAL is not set
 CONFIG_STATIC_IP=y
-CONFIG_BROKER_URL="mqtt://mqtt.eclipse.org"
-# end of Environment IoT Configuration
+# end of Environment IoT Network Configuration
 
 #
 # Example Connection Configuration
 #
 CONFIG_EXAMPLE_CONNECT_WIFI=y
-CONFIG_EXAMPLE_WIFI_SSID="myssid"
-CONFIG_EXAMPLE_WIFI_PASSWORD="mypassword"
+CONFIG_EXAMPLE_WIFI_SSID="Home"
+CONFIG_EXAMPLE_WIFI_PASSWORD="minhan74"
 # CONFIG_EXAMPLE_CONNECT_ETHERNET is not set
 CONFIG_EXAMPLE_CONNECT_IPV6=y
 CONFIG_EXAMPLE_CONNECT_IPV6_PREF_LOCAL_LINK=y

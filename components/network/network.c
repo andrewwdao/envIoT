@@ -19,8 +19,8 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
-#include "esp_pm.h"
 #include "esp_wifi_default.h"
+#include "esp_pm.h"
 #if CONFIG_CONNECT_ETHERNET
 #include "esp_eth.h"
 #include "driver/gpio.h"
@@ -585,10 +585,16 @@ esp_err_t network_stop(void)
     return ESP_OK;
 }
 
-// esp_netif_t *get_netif(void)
-// {
-//     return s_esp_netif;
-// }
+esp_netif_t *get_netif(void)
+{
+#if CONFIG_CONNECT_WIFI
+    if (_sta_netif != NULL) return _sta_netif;
+#endif
+#if CONFIG_CONNECT_ETHERNET
+    if (_eth_netif != NULL) return _eth_netif;
+#endif
+    return NULL;
+}
 
 // esp_netif_t *get_netif_from_desc(const char *desc)
 // {

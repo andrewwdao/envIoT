@@ -18,8 +18,10 @@ extern "C" {
 #endif
 
 #include "esp_err.h"
+#include "esp_netif.h"
 
 // ------ Public constants ------------------------------------
+#define NETWORK_INTERFACE get_netif()
 // #ifdef CONFIG_CONNECT_ETHERNET
 // #define NETWORK_INTERFACE get_netif()
 // #endif
@@ -41,14 +43,14 @@ esp_err_t network_start(void);
  * Counterpart to connect, de-initializes Wi-Fi or Ethernet
  */
 esp_err_t network_stop(void);
-// /**
-//  * @brief Returns esp-netif pointer created by connect()
-//  *
-//  * @note If multiple interfaces active at once, this API return NULL
-//  * In that case the get_netif_from_desc() should be used
-//  * to get esp-netif pointer based on interface description
-//  */
-// esp_netif_t *get_netif(void);
+/**
+ * @brief Returns esp-netif pointer created by connect()
+ *
+ * @note If multiple interfaces active at once, this API return NULL
+ * In that case the get_netif_from_desc() should be used
+ * to get esp-netif pointer based on interface description
+ */
+esp_netif_t *get_netif(void);
 // /**
 //  * @brief Returns esp-netif pointer created by connect() described by
 //  * the supplied desc field
