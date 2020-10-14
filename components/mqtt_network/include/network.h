@@ -21,7 +21,7 @@ extern "C" {
 #include "esp_netif.h"
 
 // ------ Public constants ------------------------------------
-#define NETWORK_INTERFACE get_netif()
+// #define NETWORK_INTERFACE get_netif()
 // #ifdef CONFIG_CONNECT_ETHERNET
 // #define NETWORK_INTERFACE get_netif()
 // #endif

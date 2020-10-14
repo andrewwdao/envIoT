@@ -26,6 +26,7 @@
 /** @brief tag used for ESP serial console messages */
 static const char *TAG = "MQTT";
 esp_mqtt_client_handle_t _client;
+uint8_t MQTT_CONNECTED_FLAG = 0;
 // ------ PUBLIC variable definitions -------------------------
 //--------------------------------------------------------------
 // FUNCTION DEFINITIONS
@@ -46,12 +47,14 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
         case MQTT_EVENT_CONNECTED:
             ESP_LOGW(TAG, "MQTT Connected!");
             led_lit();
+            MQTT_CONNECTED_FLAG = 1;
             esp_mqtt_client_publish(client, STATUS_TOPIC, "1", 0, 1, 0); //client, topic, data, len, qos, retain  
             esp_mqtt_client_subscribe(client, CMD_TOPIC, 1); //client, topic, qos
             break;
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "MQTT Disconnected!");
             led_blink();
+            MQTT_CONNECTED_FLAG = 0;
             break;
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGW(TAG, " - Subscribed, msg_id=%d", event->msg_id);
@@ -79,22 +82,31 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 }
 int mqtt_sub(const char *topic, int qos)
 {
-    int msg_id = esp_mqtt_client_subscribe(_client, topic, qos); //client, topic, qos
-    ESP_LOGW(TAG, "Subscribing Topic: %.*s", strlen(topic), topic);
-    return msg_id;
+    if (MQTT_CONNECTED_FLAG){
+        int msg_id = esp_mqtt_client_subscribe(_client, topic, qos); //client, topic, qos
+        ESP_LOGW(TAG, "Subscribing Topic: %.*s", strlen(topic), topic);
+        return msg_id;
+    }
+    return -1;
 }
 int mqtt_unsub(const char *topic)
 {
-    int msg_id = esp_mqtt_client_unsubscribe(_client, topic); //client, topic, qos
-    ESP_LOGW(TAG, "Unsubscribing Topic: %.*s", strlen(topic), topic);
-    return msg_id;
+    if (MQTT_CONNECTED_FLAG){
+        int msg_id = esp_mqtt_client_unsubscribe(_client, topic); //client, topic, qos
+        ESP_LOGW(TAG, "Unsubscribing Topic: %.*s", strlen(topic), topic);
+        return msg_id;
+    }
+    return -1;
 }
 int mqtt_pub(const char *topic, const char *data, int qos, int retain)
 {
-    int msg_id = esp_mqtt_client_publish(_client, topic, data, 0, qos, retain); //client, topic, data, len, qos, retain  
-    ESP_LOGW(TAG, "Publishing Topic: %.*s", strlen(topic), topic);
-    ESP_LOGW(TAG, " - Data: %.*s", strlen(data), data);
-    return msg_id;
+    if (MQTT_CONNECTED_FLAG){
+        int msg_id = esp_mqtt_client_publish(_client, topic, data, 0, qos, retain); //client, topic, data, len, qos, retain  
+        ESP_LOGW(TAG, "Publishing Topic: %.*s", strlen(topic), topic);
+        ESP_LOGW(TAG, " - Data: %.*s", strlen(data), data);
+        return msg_id;
+    }
+    return -1;
 }
 esp_err_t mqtt_start(void)
 {

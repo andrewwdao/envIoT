@@ -18,12 +18,20 @@ extern "C" {
 // ------ Public constants ------------------------------------
 // ------ Public function prototypes --------------------------
 /**
- * @brief Connect to MQTT broker
- * @return ESP_OK on successful connection
+ * @brief Init indicating LED
  */
 void led_init(void);
+/**
+ * @brief Make the LED lit
+ */
 void led_lit(void);
+/**
+ * @brief Turn off the LED
+ */
 void led_off(void);
+/**
+ * @brief blinking the LED
+ */
 void led_blink(void);
 
 // ------ Public variable -------------------------------------

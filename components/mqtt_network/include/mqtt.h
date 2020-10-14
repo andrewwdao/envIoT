@@ -28,15 +28,21 @@ extern "C" {
  * @return ESP_OK on successful connection
  */
 esp_err_t mqtt_start(void);
-int mqtt_sub(const char *topic, int qos);
-int mqtt_unsub(const char *topic);
-int mqtt_pub(const char *topic, const char *data, int qos, int retain);
-
 /**
- * Counterpart to connect, de-initializes Wi-Fi or Ethernet
+ * @brief Subscribe to a topic in MQTT broker
+ * @return msg_id on successful connection
  */
-// esp_err_t network_stop(void);
-
+int mqtt_sub(const char *topic, int qos);
+/**
+ * @brief Unsubscribe to a topic in MQTT broker
+ * @return msg_id on successful connection
+ */
+int mqtt_unsub(const char *topic);
+/**
+ * @brief Publish a message to a topic in MQTT broker
+ * @return msg_id on successful publishment
+ */
+int mqtt_pub(const char *topic, const char *data, int qos, int retain);
 // ------ Public variable -------------------------------------
 
 #ifdef __cplusplus
