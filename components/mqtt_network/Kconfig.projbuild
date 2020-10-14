@@ -355,7 +355,7 @@ menu "EnvIoT MQTT Network Configuration"
 
     config LED_PIN
         int "Indicating LED pin"
-        default 2
+        default 32
         help
             Choose pin of the Indicating LED.
     

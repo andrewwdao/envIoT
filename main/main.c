@@ -16,6 +16,7 @@
 #include "esp_netif.h"
 
 #include "mqtt_network.h"
+#include "sensor.h"
 // ------ Private constants -----------------------------------
 /**
  * @note config parameters via "idf.py menuconfig
@@ -67,20 +68,21 @@ void app_main(void)
         1);                  /* CoreID */
     
     network_init();
-    ESP_ERROR_CHECK(network_start());
+    //ESP_ERROR_CHECK(network_start());
     ESP_LOGW(TAG, "Hellooooooooooooo wifi");
-    mqtt_start();
-    DELAY_MS(2000);
-    mqtt_sub(STATUS_TOPIC,1); //topic, qos
-    DELAY_MS(2000);
-    mqtt_unsub(STATUS_TOPIC); //topic
+    //mqtt_start();
+    // mqtt_sub(STATUS_TOPIC,1); //topic, qos
     
     for (;;) {
-        mqtt_pub(DATA_TOPIC, "{temp:30.05}",1,0); //topic, data, qos, retain
-        DELAY_MS(3000);
-        mqtt_pub(DATA_TOPIC, "{temp:15.07}",1,0); //topic, data, qos, retain
-        DELAY_MS(3000);
-        mqtt_pub(CMD_TOPIC, "command here",1,0); //topic, data, qos, retain
-        DELAY_MS(3000);
+        sensor_init();
+        DELAY_MS(5000);
+        sensor_stop();
+        DELAY_MS(5000);
+    //     mqtt_pub(DATA_TOPIC, "{temp:30.05}",1,0); //topic, data, qos, retain
+    //     DELAY_MS(3000);
+    //     mqtt_pub(DATA_TOPIC, "{temp:15.07}",1,0); //topic, data, qos, retain
+    //     DELAY_MS(3000);
+    //     mqtt_pub(CMD_TOPIC, "command here",1,0); //topic, data, qos, retain
+    //     DELAY_MS(3000);
     }
 }

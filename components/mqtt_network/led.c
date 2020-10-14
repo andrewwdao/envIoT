@@ -83,7 +83,6 @@ void led_init(void)
         NULL,           /* Parameter of the task */
         0,              /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
         NULL);          /* Task handle to keep track of created task */
-    
 
 }
 

@@ -1,14 +1,13 @@
 /*------------------------------------------------------------*-
-  MQTT Network(over TCP) - header file
+  Temperature sensor - header file
   (c) Minh-An Dao 2020
-  version 1.00 - 09/10/2020
+  version 1.00 - 14/10/2020
 ---------------------------------------------------------------
- * Configuration to connect to Wifi and/or Ethernet
- * Then connect to MQTT Broker.
+ * Configurate the DS18B20 sensor based on existed libraries.
  * 
  --------------------------------------------------------------*/
-#ifndef __MQTT_NETWORK_H
-#define __MQTT_NETWORK_H
+#ifndef __TEMP_SENSOR_H
+#define __TEMP_SENSOR_H
 
 #pragma once
 
@@ -16,8 +15,9 @@
 extern "C" {
 #endif
 
-#include "network.h"
-#include "mqtt.h"
+#include "owb.h"
+#include "owb_rmt.h"
+#include "ds18b20.h"
 
 #ifdef __cplusplus
 }
