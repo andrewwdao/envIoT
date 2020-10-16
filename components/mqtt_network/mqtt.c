@@ -84,7 +84,7 @@ int mqtt_sub(const char *topic, int qos)
 {
     if (MQTT_CONNECTED_FLAG){
         int msg_id = esp_mqtt_client_subscribe(_client, topic, qos); //client, topic, qos
-        ESP_LOGW(TAG, "Subscribing Topic: %.*s", strlen(topic), topic);
+        ESP_LOGW(TAG, "Subscribing to: %.*s", strlen(topic), topic);
         return msg_id;
     }
     return -1;
@@ -93,7 +93,7 @@ int mqtt_unsub(const char *topic)
 {
     if (MQTT_CONNECTED_FLAG){
         int msg_id = esp_mqtt_client_unsubscribe(_client, topic); //client, topic, qos
-        ESP_LOGW(TAG, "Unsubscribing Topic: %.*s", strlen(topic), topic);
+        ESP_LOGW(TAG, "Unsubscribing to: %.*s", strlen(topic), topic);
         return msg_id;
     }
     return -1;
@@ -102,7 +102,7 @@ int mqtt_pub(const char *topic, const char *data, int qos, int retain)
 {
     if (MQTT_CONNECTED_FLAG){
         int msg_id = esp_mqtt_client_publish(_client, topic, data, 0, qos, retain); //client, topic, data, len, qos, retain  
-        ESP_LOGW(TAG, "Publishing Topic: %.*s", strlen(topic), topic);
+        ESP_LOGW(TAG, "Publishing to: %.*s", strlen(topic), topic);
         ESP_LOGW(TAG, " - Data: %.*s", strlen(data), data);
         return msg_id;
     }

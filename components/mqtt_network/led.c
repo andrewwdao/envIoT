@@ -62,12 +62,12 @@ static void blink_task(void* arg)
             vTaskDelay(BLINK_INTERVAL / portTICK_PERIOD_MS);
         } else if (_led_status == LED_LIT)
         {
-            /* LED on (output high) */
-            gpio_set_level(BLINK_GPIO, 1);
+            /* LED off (output low) --> turn on LED */
+            gpio_set_level(BLINK_GPIO, 0);
         } else
         {
-            /* LED off (output low) */
-            gpio_set_level(BLINK_GPIO, 0);
+            /* LED on (output high) --> turn off LED */
+            gpio_set_level(BLINK_GPIO, 1);
         }
     }
 }
