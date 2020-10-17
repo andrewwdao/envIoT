@@ -119,27 +119,12 @@ static const char *_ipv6_addr_types[] = {
 // FUNCTION DEFINITIONS
 //--------------------------------------------------------------
 /**
- * @brief Checks the netif description if it contains specified prefix.
- * All netifs created withing common connect component are prefixed with the module TAG,
- * so it returns true if the specified netif is owned by this module
- */
-// static bool _is_our_netif(const char *prefix, esp_netif_t *netif)
-// {
-//     return strncmp(prefix, esp_netif_get_desc(netif), strlen(prefix)-1) == 0;
-// }
-
-/**
  * @brief Event for getting ip
  */
 static void __on_got_ip(void *arg, esp_event_base_t event_base,
                       int32_t event_id, void *event_data)
 {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-    // if (!_is_our_netif(TAG, event->esp_netif)) {
-    //     ESP_LOGW(TAG, "[Ignored] Got IPv4 from another interface %s", esp_netif_get_desc(event->esp_netif));
-    //     return;
-    // }
-    // Warning: the interface desc is used in tests to capture actual connection details (IP, gw, mask)
     ESP_LOGW(TAG, "Connected by %s", esp_netif_get_desc(event->esp_netif));
     ESP_ERROR_CHECK(esp_netif_get_ip_info(event->esp_netif, &event->ip_info));
     ESP_LOGW(TAG, "- IPv4 address: " IPSTR, IP2STR(&event->ip_info.ip));
@@ -154,10 +139,6 @@ static void __on_got_ipv6(void *arg, esp_event_base_t event_base,
                         int32_t event_id, void *event_data)
 {
     ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
-    // if (!_is_our_netif(TAG, event->esp_netif)) {
-    //     ESP_LOGW(TAG, "Got IPv6 from another netif: ignored");
-    //     return;
-    // }
     esp_ip6_addr_type_t ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
     ESP_LOGW(TAG, "- IPv6 address:" IPV6STR, IPV62STR(event->ip6_info.ip));
     ESP_LOGW(TAG, "- Type: %s", _ipv6_addr_types[ipv6_type]);
@@ -198,9 +179,8 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         memcpy(password, evt->password, sizeof(evt->password));
         ESP_LOGI(TAG, "SSID:%s", ssid);
         ESP_LOGI(TAG, "PASSWORD:%s", password);
-        // ESP_ERROR_CHECK(esp_wifi_disconnect());
-        // ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-        // ESP_ERROR_CHECK(esp_wifi_connect());
+        //code here
+
     } else if (event_id == SC_EVENT_SEND_ACK_DONE) {
         //--- smart config stop - set the bit for the smartconfig task to destroy itself
         xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
@@ -241,22 +221,8 @@ static void __smartconfig_task(void * parm)
     if(uxBits & ESPTOUCH_DONE_BIT) {
         //pass ssid and password here
     }
+    //start everything from the beginning
     esp_restart();
-    // esp_smartconfig_stop();
-    // /* The event will not be processed after unregister */
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(SC_EVENT,
-    //                                                       ESP_EVENT_ANY_ID,
-    //                                                       _ins_smartconfig_event));
-    // esp_err_t err = esp_wifi_stop();
-    // if (err == ESP_ERR_WIFI_NOT_INIT) return;
-    // ESP_ERROR_CHECK(err);
-    // ESP_ERROR_CHECK(esp_wifi_deinit());
-    // ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif));
-    // esp_netif_destroy(sta_netif);
-    // sta_netif = NULL;
-    // xEventGroupClearBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
-    // vTaskResume(xNetwork);
-    // vTaskDelete(NULL);
 }
 
 esp_event_handler_instance_t _ins_wifi_event;
@@ -341,18 +307,6 @@ static esp_netif_t* __wifi_start(void)
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    // -------- create interface description to distinguish eth and 
-    // esp_netif_inherent_config_t esp_netif_config = ESP_NETIF_INHERENT_DEFAULT_WIFI_STA();
-    // // Prefix the interface description with the module TAG
-    // // Warning: the interface desc is used in tests to capture actual connection details (IP, gw, mask)
-    // char *desc;
-    // asprintf(&desc, "%s: %s", TAG, esp_netif_config.if_desc);
-    // esp_netif_config.if_desc = desc;
-    // esp_netif_config.route_prio = 128;
-    // esp_netif_t *sta_netif = esp_netif_create_wifi(WIFI_IF_STA, &esp_netif_config);
-    // free(desc);
-    // esp_wifi_set_default_wifi_sta_handlers();
 
     // Register user defined event handers
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
@@ -494,23 +448,6 @@ static void __on_eth_event(void *esp_netif, esp_event_base_t event_base,
 
 static esp_netif_t* __eth_start(void)
 {
-    // char *desc;
-    // esp_netif_inherent_config_t esp_netif_config = ESP_NETIF_INHERENT_DEFAULT_ETH();
-    // // Prefix the interface description with the module TAG
-    // // Warning: the interface desc is used in tests to capture actual connection details (IP, gw, mask)
-    // asprintf(&desc, "%s: %s", TAG, esp_netif_config.if_desc);
-    // esp_netif_config.if_desc = desc;
-    // esp_netif_config.route_prio = 64;
-    // esp_netif_config_t netif_config = {
-    //         .base = &esp_netif_config,
-    //         .stack = ESP_NETIF_NETSTACK_DEFAULT_ETH
-    // };
-    // esp_netif_t *netif = esp_netif_new(&netif_config);
-    // assert(netif);
-    // free(desc);
-    // // Set default handlers to process TCP/IP stuffs
-    // ESP_ERROR_CHECK(esp_eth_set_default_handlers(netif));
-
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
     esp_netif_t *eth_netif = esp_netif_new(&cfg);
 
@@ -645,16 +582,7 @@ static void __network_task(void* arg)
     ESP_ERROR_CHECK(network_init());
     ESP_ERROR_CHECK(network_start()); //will not return if no connection is established.
     ESP_ERROR_CHECK(mqtt_start());
-    // while (1)
-    // {
-    //     ESP_LOGW(TAG, "hello1");
-    //     vTaskSuspend(xNetwork);
-    //     vTaskDelay(5000/portTICK_PERIOD_MS);
-    //     ESP_LOGW(TAG, "hello2");
-    //     ESP_ERROR_CHECK(network_start());
-    
-    // }
-    
+    vTaskSuspend(xNetwork); 
 }
 
 esp_err_t network_startTask(void)
