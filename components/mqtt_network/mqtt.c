@@ -126,6 +126,7 @@ esp_err_t mqtt_start(void)
     _client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(_client, ESP_EVENT_ANY_ID, mqtt_event_handler, _client);
     esp_mqtt_client_start(_client);
+    mqtt_sub(STATUS_TOPIC,1); //topic, qos
     return ESP_OK;
 }
 

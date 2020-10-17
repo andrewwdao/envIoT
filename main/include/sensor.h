@@ -23,11 +23,11 @@ extern "C" {
  * @brief sensor init function (public)
  * will automatically send data through mqtt protocol
  */
-void sensor_init(void);
+esp_err_t sensor_init(void);
 /**
  * @brief sensor stop function (public)
  */
-void sensor_stop(void);
+esp_err_t sensor_stop(void);
 // ------ Public variable -------------------------------------
 
 #ifdef __cplusplus

@@ -31,6 +31,11 @@ extern "C" {
 // #endif
 // ------ Public function prototypes --------------------------
 /**
+ * @brief Connect to Wi-Fi and/or Ethernet, wait for IP
+ * @return ESP_OK on successful connection
+ */
+esp_err_t network_startTask(void);
+/**
  * @brief network initialize function - needed for any net interface
  */
 esp_err_t network_init(void);

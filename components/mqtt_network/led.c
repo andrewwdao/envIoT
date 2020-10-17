@@ -23,6 +23,7 @@
 #define BLINK_INTERVAL   (CONFIG_LED_INTERVAL)
 typedef enum {
     LED_BLINK,
+    LED_BLINK_FAST,
     LED_LIT,
     LED_OFF
 } led_state_t;
@@ -52,22 +53,32 @@ static void blink_task(void* arg)
         {
             _led_status = status_now; 
         }
-        if (_led_status == LED_BLINK)
+        switch (_led_status)
         {
+        case LED_BLINK:
             /* LED off (output low) */
             gpio_set_level(BLINK_GPIO, 0);
             vTaskDelay(BLINK_INTERVAL / portTICK_PERIOD_MS);
             /* LED on (output high) */
             gpio_set_level(BLINK_GPIO, 1);
             vTaskDelay(BLINK_INTERVAL / portTICK_PERIOD_MS);
-        } else if (_led_status == LED_LIT)
-        {
+            break;
+        case LED_BLINK_FAST:
+            /* LED off (output low) */
+            gpio_set_level(BLINK_GPIO, 0);
+            vTaskDelay((uint16_t)(BLINK_INTERVAL/5)/portTICK_PERIOD_MS);
+            /* LED on (output high) */
+            gpio_set_level(BLINK_GPIO, 1);
+            vTaskDelay((uint16_t)(BLINK_INTERVAL/5)/portTICK_PERIOD_MS);
+            break;
+        case LED_LIT:
             /* LED off (output low) --> turn on LED */
             gpio_set_level(BLINK_GPIO, 0);
-        } else
-        {
+            break;
+        default:
             /* LED on (output high) --> turn off LED */
             gpio_set_level(BLINK_GPIO, 1);
+            break;
         }
     }
 }
@@ -104,4 +115,9 @@ void led_blink(void)
     xQueueSend(_blink_queue, &led_now,  portMAX_DELAY);    
 }
 
+void led_fastblink(void)
+{
+    led_state_t led_now = LED_BLINK_FAST;
+    xQueueSend(_blink_queue, &led_now,  portMAX_DELAY);    
+}
 #endif

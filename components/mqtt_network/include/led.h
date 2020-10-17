@@ -33,7 +33,10 @@ void led_off(void);
  * @brief blinking the LED
  */
 void led_blink(void);
-
+/**
+ * @brief fast blinking the LED
+ */
+void led_fastblink(void);
 // ------ Public variable -------------------------------------
 
 #ifdef __cplusplus

@@ -219,7 +219,7 @@ static void __sensor_task(void* arg)
  * @brief sensor init function (public)
  * will automatically send data through mqtt protocol
  */
-void sensor_init(void)
+esp_err_t sensor_init(void)
 {
     _sensor_stop_queue = xQueueCreate(1, sizeof(uint8_t));
     //------------ sensor task -----------------
@@ -230,13 +230,16 @@ void sensor_init(void)
         NULL,           /* Parameter of the task */
         1,              /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
         NULL);          /* Task handle to keep track of created task */
+
+    return ESP_OK;
 }
 /**
  * @brief sensor stop function (public)
  */
-void sensor_stop(void)
+esp_err_t sensor_stop(void)
 {
     // send signal for the task to delete itself
     uint8_t stop_signal = SECRET_STOPKEY;
     xQueueSend(_sensor_stop_queue, &stop_signal,  portMAX_DELAY);
+    return ESP_OK;
 }

@@ -71,6 +71,18 @@ menu "EnvIoT MQTT Network Configuration"
                 WiFi password (WPA or WPA2) for the example to use.
                 Can be left blank if the network has no security set.
         
+        config WIFI_MAX_RETRY
+            int "WiFi Max retry times before enter smartconfig"
+            default 5
+            help
+                WiFi Max retry times before enter smartconfig.
+
+        config SMARTCONFIG_WAITTIME
+            int "Smart config wait time before reboot (ms)"
+            default 50000
+            help
+                Smart config wait time before reboot (ms).
+
         config LISTEN_INTERVAL
             int "WiFi listen interval"
             default 3
