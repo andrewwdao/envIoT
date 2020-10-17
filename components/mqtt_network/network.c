@@ -209,9 +209,9 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "SSID:%s", ssid);
         ESP_LOGI(TAG, "PASSWORD:%s", password);
 
-        ESP_ERROR_CHECK( esp_wifi_disconnect() );
-        ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-        ESP_ERROR_CHECK( esp_wifi_connect() );
+        // ESP_ERROR_CHECK( esp_wifi_disconnect() );
+        // ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+        // ESP_ERROR_CHECK( esp_wifi_connect() );
     } else if (event_id == SC_EVENT_SEND_ACK_DONE) {
         //--- smart config stop - set the bit for the smartconfig task to destroy itself
         xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
@@ -231,23 +231,21 @@ static void __smartconfig_task(void * parm)
     ESP_ERROR_CHECK(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH)); //https://www.espressif.com/sites/default/files/30b-esp-touch_user_guide_en_v1.1_20160412_0.pdf
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_smartconfig_start(&cfg));
-    while (1) {
-        uxBits = xEventGroupWaitBits(s_wifi_event_group, /* The event group being tested. */ 
-                                     ESPTOUCH_DONE_BIT,  /* The bits within the event group to wait for. */
-                                     true,               /* BITs should be cleared before returning. */
-                                     false,              /* Don't wait for both bits, either bit will do. */
-                                     portMAX_DELAY);     /* Wait time. */
-        if(uxBits & ESPTOUCH_DONE_BIT) {
-            ESP_LOGI(TAG, "smartconfig done");
-            esp_smartconfig_stop();
-            /* The event will not be processed after unregister */
-            ESP_ERROR_CHECK(esp_event_handler_instance_unregister(SC_EVENT,
-                                                                  ESP_EVENT_ANY_ID,
-                                                                  _ins_smartconfig_event));
-            xEventGroupClearBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
-            vTaskDelete(NULL);
-        }
-        vTaskDelay(100/portTICK_PERIOD_MS);
+    esp_esptouch_set_timeout(255); //time out in second, range 15s~255s
+    uxBits = xEventGroupWaitBits(s_wifi_event_group,        /* The event group being tested. */ 
+                                ESPTOUCH_DONE_BIT,          /* The bits within the event group to wait for. */
+                                true,                       /* BITs should be cleared before returning. */
+                                false,                      /* Don't wait for both bits, either bit will do. */
+                                20000/portTICK_PERIOD_MS);  /* Wait time. */
+    if(uxBits & ESPTOUCH_DONE_BIT) {
+        ESP_LOGI(TAG, "smartconfig done");
+        esp_smartconfig_stop();
+        /* The event will not be processed after unregister */
+        ESP_ERROR_CHECK(esp_event_handler_instance_unregister(SC_EVENT,
+                                                                ESP_EVENT_ANY_ID,
+                                                                _ins_smartconfig_event));
+        xEventGroupClearBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
+        vTaskDelete(NULL);
     }
 }
 
@@ -290,18 +288,18 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
         if (err == ESP_ERR_WIFI_NOT_STARTED) return;
         ESP_ERROR_CHECK(err);
         //--- smart config start - create the task
-        if (xSmartConfig == NULL)
-        {
-            ESP_LOGW(TAG, "This is meeeeeeeeee");
-            //------------ smartconfig task -----------------
-            xTaskCreate(
-                &__smartconfig_task, /* Task Function */
-                "smartconfig task",  /* Name of Task */
-                4096,                /* Stack size of Task */
-                NULL,                /* Parameter of the task */
-                3,                   /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
-                xSmartConfig);               /* Task handle to keep track of created task */
-        } 
+        // if (xSmartConfig == NULL)
+        // {
+        //     ESP_LOGW(TAG, "This is meeeeeeeeee");
+        //     //------------ smartconfig task -----------------
+        //     xTaskCreate(
+        //         &__smartconfig_task, /* Task Function */
+        //         "smartconfig task",  /* Name of Task */
+        //         4096,                /* Stack size of Task */
+        //         NULL,                /* Parameter of the task */
+        //         3,                   /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
+        //         &xSmartConfig);       /* Task handle to keep track of created task */
+        // } 
         //--------------------------------------------------------------------------------
         break;
     default:
@@ -317,16 +315,16 @@ static esp_netif_t* __wifi_start(void)
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
     assert(sta_netif);
 
-#ifdef CONFIG_STATIC_IP
-    //set static ip - https://esp32.com/viewtopic.php?f=2&t=14689
-    //define of IP4_ADDR - https://github.com/espressif/esp-idf/blob/master/components/mdns/test_afl_fuzz_host/esp32_compat.h
-    esp_netif_dhcpc_stop(sta_netif);
-    esp_netif_ip_info_t ip_info;
-    IP4_ADDR(&ip_info.ip, 192, 168, 1, 174);
-   	IP4_ADDR(&ip_info.gw, 192, 168, 1, 1);
-   	IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
-    esp_netif_set_ip_info(sta_netif, &ip_info);
-#endif
+// #ifdef CONFIG_STATIC_IP
+//     //set static ip - https://esp32.com/viewtopic.php?f=2&t=14689
+//     //define of IP4_ADDR - https://github.com/espressif/esp-idf/blob/master/components/mdns/test_afl_fuzz_host/esp32_compat.h
+//     esp_netif_dhcpc_stop(sta_netif);
+//     esp_netif_ip_info_t ip_info;
+//     IP4_ADDR(&ip_info.ip, 192, 168, 1, 174);
+//    	IP4_ADDR(&ip_info.gw, 192, 168, 1, 1);
+//    	IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
+//     esp_netif_set_ip_info(sta_netif, &ip_info);
+// #endif
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -645,6 +643,7 @@ esp_err_t network_init(void)
     ESP_ERROR_CHECK(esp_netif_init());
     // Create default event loop that running in background
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    s_wifi_event_group = xEventGroupCreate();
     return ESP_OK;
 }
 /**

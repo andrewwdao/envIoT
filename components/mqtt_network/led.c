@@ -78,8 +78,8 @@ void led_init(void)
     //------------ blink task -----------------
     xTaskCreate(
         &blink_task,    /* Task Function */
-        "blink_task",   /* Name of Task */
-        512,            /* Stack size of Task */
+        "blink task",   /* Name of Task */
+        1024,           /* Stack size of Task */
         NULL,           /* Parameter of the task */
         0,              /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
         NULL);          /* Task handle to keep track of created task */
