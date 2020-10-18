@@ -58,17 +58,43 @@ menu "EnvIoT MQTT Network Configuration"
             Choose this option to connect with WiFi
 
     if CONNECT_WIFI
-        config WIFI_MAX_RETRY
-            int "WiFi Max retry times before enter smartconfig"
-            default 5
-            help
-                WiFi Max retry times before enter smartconfig.
 
-        config SMARTCONFIG_WAITTIME
-            int "Smart config wait time before reboot (ms)"
-            default 50000
+        config WIFI_EN_SMARTCONFIG
+            bool "Enable SmartConfig"
+            default y
             help
-                Smart config wait time before reboot (ms).
+                Enable smartconfig for the system.
+
+        if WIFI_EN_SMARTCONFIG
+
+            config WIFI_MAX_RETRY
+                int "WiFi Max retry times before enter smartconfig"
+                default 5
+                help
+                    WiFi Max retry times before enter smartconfig.
+
+            config SMARTCONFIG_WAITTIME
+                int "Smart config wait time before reboot (ms)"
+                default 50000
+                help
+                    Smart config wait time before reboot (ms).
+        endif
+        if  !WIFI_EN_SMARTCONFIG
+            
+            config WIFI_SSID
+                string "WiFi SSID"
+                default "myssid"
+                help
+                    SSID (network name) for the example to connect to.
+
+            config WIFI_PASSWORD
+                string "WiFi Password"
+                default "mypassword"
+                help
+                    WiFi password (WPA or WPA2) for the example to use.
+                    Can be left blank if the network has no security set.
+
+        endif
 
         config LISTEN_INTERVAL
             int "WiFi listen interval"

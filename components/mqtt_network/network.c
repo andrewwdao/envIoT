@@ -86,6 +86,8 @@ static xSemaphoreHandle _semph_got_ips;
 static esp_ip4_addr_t _ip_addr;
 #if CONFIG_CONNECT_WIFI
 static esp_netif_t *_sta_netif = NULL;
+#ifdef CONFIG_WIFI_EN_SMARTCONFIG
+uint8_t _wifi_retry_num = 0;
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t _smartconfig_event;
 // TaskHandle_t xSmartConfig = NULL;
@@ -93,7 +95,7 @@ static EventGroupHandle_t _smartconfig_event;
    but we only care about one event - are we connected
    to the AP with an IP? */
 static const int GOT_SSID_PWD_BIT = BIT0;
-uint8_t _wifi_retry_num = 0;
+#endif
 #endif
 #if CONFIG_CONNECT_ETHERNET
 static esp_netif_t *_eth_netif = NULL;
@@ -151,6 +153,7 @@ static void __on_got_ipv6(void *arg, esp_event_base_t event_base,
 
 #ifdef CONFIG_CONNECT_WIFI
 
+#ifdef CONFIG_WIFI_EN_SMARTCONFIG
 static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base, 
                                       int32_t event_id, void* event_data)
 {
@@ -231,6 +234,8 @@ static void __smartconfig_task(void * parm)
     }
 }
 
+#endif
+
 esp_event_handler_instance_t _ins_wifi_event;
 esp_event_handler_instance_t _ins_wifi_got_ip;
 #ifdef CONFIG_CONNECT_IPV6
@@ -246,13 +251,20 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
     switch (event_id) {
     case WIFI_EVENT_STA_START:
         ESP_LOGI(TAG, "Starting wifi...");
+
+#ifdef CONFIG_WIFI_EN_SMARTCONFIG
         char ssid[33] = {0};
         read_WifiSSID(ssid);
         ESP_LOGI(TAG, "Connecting to %s...", ssid);
+#else
+        ESP_LOGI(TAG, "Connecting to %s...", CONFIG_WIFI_SSID);
+#endif
         ESP_ERROR_CHECK(esp_wifi_connect());
         break;
     case WIFI_EVENT_STA_CONNECTED:
+#ifdef CONFIG_WIFI_EN_SMARTCONFIG
         _wifi_retry_num = 0;
+#endif
 #ifdef CONFIG_CONNECT_IPV6
         esp_netif_create_ip6_linklocal(esp_netif);
 #endif
@@ -262,8 +274,10 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
 #endif
         break;
     case WIFI_EVENT_STA_DISCONNECTED:
+#ifdef CONFIG_WIFI_EN_SMARTCONFIG
         if (_wifi_retry_num < CONFIG_WIFI_MAX_RETRY)
         {
+
             char ssid[33] = {0};
             read_WifiSSID(ssid);
             ESP_LOGI(TAG, "Wi-Fi disconnected, reconnect to %s...", ssid);
@@ -285,6 +299,12 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
                 NULL);              /* Task handle to keep track of created task */
             //--------------------------------------------------------------------------------
         }
+#else
+            ESP_LOGI(TAG, "Wi-Fi disconnected, reconnect to %s...", CONFIG_WIFI_SSID);
+            esp_err_t err = esp_wifi_connect();
+            if (err == ESP_ERR_WIFI_NOT_STARTED) return;
+            ESP_ERROR_CHECK(err);
+#endif
         break;
     default:
         break;
@@ -331,7 +351,7 @@ static esp_netif_t* __wifi_start(void)
 
     
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-
+#ifdef CONFIG_WIFI_EN_SMARTCONFIG
     wifi_config_t wifi_config;
     bzero(&wifi_config, sizeof(wifi_config_t)); // The bzero() function copies n bytes, each with a value of zero, into string s
     read_WifiSSID((char*)wifi_config.sta.ssid); //ssid
@@ -341,19 +361,19 @@ static esp_netif_t* __wifi_start(void)
     * However these modes are deprecated and not advisable to be used. Incase your Access point
     * doesn't support WPA2, these mode can be enabled by commenting below line */
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-    // wifi_config_t wifi_config = {
-    //     .sta = {
-    //         .ssid = CONFIG_WIFI_SSID,
-    //         .password = CONFIG_WIFI_PASSWORD,
-    //         // .ssid = *wifi_ssid,
-    //         // .password = *wifi_pass,
-    //         .listen_interval = CONFIG_LISTEN_INTERVAL,
-    //         /* Setting a password implies station will connect to all security modes including WEP/WPA.
-    //          * However these modes are deprecated and not advisable to be used. Incase your Access point
-    //          * doesn't support WPA2, these mode can be enabled by commenting below line */
-	//         .threshold.authmode = WIFI_AUTH_WPA2_PSK
-    //     },
-    // };
+#else
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = CONFIG_WIFI_SSID,
+            .password = CONFIG_WIFI_PASSWORD,
+            .listen_interval = CONFIG_LISTEN_INTERVAL,
+            /* Setting a password implies station will connect to all security modes including WEP/WPA.
+             * However these modes are deprecated and not advisable to be used. Incase your Access point
+             * doesn't support WPA2, these mode can be enabled by commenting below line */
+	        .threshold.authmode = WIFI_AUTH_WPA2_PSK
+        },
+    };
+#endif
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -624,7 +644,7 @@ esp_err_t network_init(void)
     // Create default event loop that running in background
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     
-#if CONFIG_CONNECT_WIFI
+#ifdef CONFIG_WIFI_EN_SMARTCONFIG
     _smartconfig_event = xEventGroupCreate();
 #endif
     return ESP_OK;
