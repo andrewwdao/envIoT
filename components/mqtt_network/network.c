@@ -42,16 +42,16 @@
 /**
  * @brief format the ip to the correct form.
  * @note  define of IP4_ADDR - https://github.com/espressif/esp-idf/blob/master/components/mdns/test_afl_fuzz_host/esp32_compat.h
+ * @warning sometimes the define of this is necessary, sometime not!
  */
-
-#ifdef CONFIG_STATIC_IP
+/* #ifdef CONFIG_STATIC_IP
 #define IP4_ADDR(ipaddr, a,b,c,d) \
         (ipaddr)->addr = ((uint32_t)((d) & 0xff) << 24) | \
                          ((uint32_t)((c) & 0xff) << 16) | \
                          ((uint32_t)((b) & 0xff) << 8)  | \
-                          (uint32_t)((a) & 0xff)
-#endif
-
+                         (uint32_t)((a) & 0xff)
+ #endif
+*/
 #ifdef CONFIG_CONNECT_IPV6
 #define MAX_IP6_ADDRS_PER_NETIF (5)
 #define NR_OF_IP_ADDRESSES_TO_WAIT_FOR (_activ_if*2)
@@ -84,18 +84,15 @@ static const char *TAG = "NETWORK";
 static int _activ_if = 0; //active interfaces
 static xSemaphoreHandle _semph_got_ips;
 static esp_ip4_addr_t _ip_addr;
-TaskHandle_t xNetwork = NULL;
 #if CONFIG_CONNECT_WIFI
-uint8_t* _wifi_ssid;
-uint8_t* _wifi_passwd;
 static esp_netif_t *_sta_netif = NULL;
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
-static EventGroupHandle_t s_wifi_event_group;
+static EventGroupHandle_t _smartconfig_event;
+// TaskHandle_t xSmartConfig = NULL;
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
    to the AP with an IP? */
 static const int GOT_SSID_PWD_BIT = BIT0;
-TaskHandle_t xSmartConfig = NULL;
 uint8_t _wifi_retry_num = 0;
 #endif
 #if CONFIG_CONNECT_ETHERNET
@@ -162,7 +159,9 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
     } else if (event_id == SC_EVENT_FOUND_CHANNEL) {
         ESP_LOGI(TAG, "Found channel");
     } else if (event_id == SC_EVENT_GOT_SSID_PSWD) {
-        xEventGroupSetBits(s_wifi_event_group, GOT_SSID_PWD_BIT);
+        //--- smart config stop task flag - set the bit for the smartconfig task to suspend itself
+        xEventGroupSetBits(_smartconfig_event, GOT_SSID_PWD_BIT);
+        //----------------------------------------------------------------------------------
         smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
         wifi_config_t wifi_config;
         uint8_t ssid[33] = {0};
@@ -187,23 +186,18 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         
     } else if (event_id == SC_EVENT_SEND_ACK_DONE) {
         ESP_LOGW(TAG, "smartconfig done!");
-        //start everything from the beginning
-        esp_restart();
-        //--- smart config stop - set the bit for the smartconfig task to destroy itself
-        // xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
-        //----------------------------------------------------------------------------------
+        esp_restart(); //start everything from the beginning
     }
 }
 
 static void __smartconfig_task(void * parm)
 {
     network_stop();
-    EventBits_t uxBits;
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
     assert(sta_netif);
 
     wifi_init_config_t sta_cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK( esp_wifi_init(&sta_cfg) );
+    ESP_ERROR_CHECK(esp_wifi_init(&sta_cfg));
 
     // Register user defined event handers
     esp_event_handler_instance_t _ins_smartconfig_event;
@@ -219,13 +213,14 @@ static void __smartconfig_task(void * parm)
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_smartconfig_start(&cfg));
     esp_esptouch_set_timeout(255); //time out in second, range 15s~255s
+    EventBits_t uxBits;
     while (1)
     {
-        uxBits = xEventGroupWaitBits(s_wifi_event_group,        /* The event group being tested. */ 
-                    GOT_SSID_PWD_BIT,  /* The bits within the event group to wait for. */
-                    true,              /* BITs should be cleared before returning. */
-                    false,             /* Don't wait for both bits, either bit will do. */
-                    CONFIG_SMARTCONFIG_WAITTIME/portTICK_PERIOD_MS);  /* Wait time. */
+        uxBits = xEventGroupWaitBits(_smartconfig_event,        /* The event group being tested. */ 
+                                    GOT_SSID_PWD_BIT,  /* The bits within the event group to wait for. */
+                                    true,              /* BITs should be cleared before returning. */
+                                    false,             /* Don't wait for both bits, either bit will do. */
+                                    CONFIG_SMARTCONFIG_WAITTIME/portTICK_PERIOD_MS);  /* Wait time. */
         if(uxBits & GOT_SSID_PWD_BIT) {
             ESP_LOGW(TAG, "smartconfig_task suspended.");
             vTaskSuspend(NULL);
@@ -233,10 +228,7 @@ static void __smartconfig_task(void * parm)
         ESP_LOGW(TAG, "smartconfig timeout.");
         //start everything from the beginning
         esp_restart();
-    
     }
-    
-    
 }
 
 esp_event_handler_instance_t _ins_wifi_event;
@@ -282,18 +274,15 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
         } else
         {
             //--- smart config start - create the task
-            if (xSmartConfig == NULL)
-            {
-                led_fastblink();
-                //------------ smartconfig task -----------------
-                xTaskCreate(
-                    &__smartconfig_task, /* Task Function */
-                    "smartconfig task",  /* Name of Task */
-                    4096,                /* Stack size of Task */
-                    NULL,                /* Parameter of the task */
-                    3,                   /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
-                    &xSmartConfig);       /* Task handle to keep track of created task */
-            } 
+            led_fastblink();
+            //------------ smartconfig task -----------------
+            xTaskCreate(
+                &__smartconfig_task, /* Task Function */
+                "smartconfig task",  /* Name of Task */
+                4096,                /* Stack size of Task */
+                NULL,                /* Parameter of the task */
+                3,                   /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
+                NULL);              /* Task handle to keep track of created task */
             //--------------------------------------------------------------------------------
         }
         break;
@@ -403,6 +392,7 @@ static esp_netif_t* __wifi_start(void)
  */
 static void __wifi_stop(void)
 {
+    if (_sta_netif==NULL) return; //no start, so no need to stop
     /* The event will not be processed after unregister */
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT,
                                                  ESP_EVENT_ANY_ID,
@@ -485,7 +475,7 @@ static esp_netif_t* __eth_start(void)
     //define of IP4_ADDR - https://github.com/espressif/esp-idf/blob/master/components/mdns/test_afl_fuzz_host/esp32_compat.h
     esp_netif_dhcpc_stop(eth_netif);
     esp_netif_ip_info_t ip_info;
-    IP4_ADDR(&ip_info.ip, 172, 30, 41, 174);
+    IP4_ADDR(&ip_info.ip, 172, 30, 41, 175);
    	IP4_ADDR(&ip_info.gw, 172, 30, 41, 1);
    	IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
     esp_netif_set_ip_info(eth_netif, &ip_info);
@@ -509,8 +499,6 @@ static esp_netif_t* __eth_start(void)
                                                IP_EVENT_GOT_IP6,
                                                &__on_got_ipv6, NULL,
                                                &_ins_eth_gotipv6));
-    // ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event, netif));
-    // ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &__on_got_ipv6, NULL));
 #endif
     eth_mac_config_t mac_config = ETH_MAC_DEFAULT_CONFIG();
     eth_phy_config_t phy_config = ETH_PHY_DEFAULT_CONFIG();
@@ -574,8 +562,7 @@ static esp_netif_t* __eth_start(void)
 
 static void __eth_stop(void)
 {
-    // esp_netif_t *_eth_netif = esp_netif_get_desc("eth");
-    //ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, &__on_got_ip));
+    if (_eth_netif==NULL) return; //no start, so no need to stop
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(ETH_EVENT,
                                                 ESP_EVENT_ANY_ID,
                                                 _ins_eth_event));
@@ -584,14 +571,9 @@ static void __eth_stop(void)
                                                 _ins_eth_gotip));
 
 #ifdef CONFIG_CONNECT_IPV6
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(ETH_EVENT,
-    //                                             ETHERNET_EVENT_CONNECTED,
-    //                                             _ins_eth_connectv6));
     ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT,
                                                 IP_EVENT_GOT_IP6,
                                                 _ins_eth_gotipv6));
-    // ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, &__on_got_ipv6));
-    // ESP_ERROR_CHECK(esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event));
 #endif
     ESP_ERROR_CHECK(esp_eth_stop(_eth_handle));
     ESP_ERROR_CHECK(esp_eth_del_netif_glue(_eth_glue));
@@ -611,7 +593,7 @@ static void __network_task(void* arg)
     ESP_ERROR_CHECK(network_init());
     ESP_ERROR_CHECK(network_start()); //will not return if no connection is established.
     ESP_ERROR_CHECK(mqtt_start());
-    vTaskSuspend(xNetwork); 
+    vTaskSuspend(NULL); 
 }
 
 esp_err_t network_startTask(void)
@@ -623,7 +605,7 @@ esp_err_t network_startTask(void)
         5120,           /* Stack size of Task */
         NULL,           /* Parameter of the task */
         1,              /* Priority of the task, vary from 0 to N, bigger means higher piority, need to be 0 to be lower than the watchdog*/
-        &xNetwork);     /* Task handle to keep track of created task */
+        NULL);         /* Task handle to keep track of created task */
 
     return ESP_OK;
 }
@@ -643,7 +625,7 @@ esp_err_t network_init(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     
 #if CONFIG_CONNECT_WIFI
-    s_wifi_event_group = xEventGroupCreate();
+    _smartconfig_event = xEventGroupCreate();
 #endif
     return ESP_OK;
 }
