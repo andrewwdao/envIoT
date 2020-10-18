@@ -34,6 +34,7 @@
 #include "lwip/sys.h"
 
 #include "network.h"
+#include "storage.h"
 #include "mqtt.h"
 #include "led.h"
 
@@ -80,19 +81,20 @@ static void __eth_stop(void);
 // ------ Private variables -----------------------------------
 /** @brief tag used for ESP serial console messages */
 static const char *TAG = "NETWORK";
-
 static int _activ_if = 0; //active interfaces
 static xSemaphoreHandle _semph_got_ips;
 static esp_ip4_addr_t _ip_addr;
 TaskHandle_t xNetwork = NULL;
 #if CONFIG_CONNECT_WIFI
+uint8_t* _wifi_ssid;
+uint8_t* _wifi_passwd;
 static esp_netif_t *_sta_netif = NULL;
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
    to the AP with an IP? */
-static const int ESPTOUCH_DONE_BIT = BIT1;
+static const int GOT_SSID_PWD_BIT = BIT0;
 TaskHandle_t xSmartConfig = NULL;
 uint8_t _wifi_retry_num = 0;
 #endif
@@ -160,12 +162,11 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
     } else if (event_id == SC_EVENT_FOUND_CHANNEL) {
         ESP_LOGI(TAG, "Found channel");
     } else if (event_id == SC_EVENT_GOT_SSID_PSWD) {
-        ESP_LOGI(TAG, "Got SSID and password");
-
+        xEventGroupSetBits(s_wifi_event_group, GOT_SSID_PWD_BIT);
         smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
         wifi_config_t wifi_config;
-        uint8_t ssid[33] = { 0 };
-        uint8_t password[65] = { 0 };
+        uint8_t ssid[33] = {0};
+        uint8_t password[65] = {0};
 
         bzero(&wifi_config, sizeof(wifi_config_t));
         memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
@@ -174,16 +175,22 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         if (wifi_config.sta.bssid_set == true) {
             memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
         }
-
         memcpy(ssid, evt->ssid, sizeof(evt->ssid));
         memcpy(password, evt->password, sizeof(evt->password));
+        ESP_LOGI(TAG, "Got SSID and password");
         ESP_LOGI(TAG, "SSID:%s", ssid);
         ESP_LOGI(TAG, "PASSWORD:%s", password);
-        //code here
-
+        store_WifiCredentials((char*)ssid, (char*)password);
+        ESP_ERROR_CHECK(esp_wifi_disconnect());
+        ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        
     } else if (event_id == SC_EVENT_SEND_ACK_DONE) {
+        ESP_LOGW(TAG, "smartconfig done!");
+        //start everything from the beginning
+        esp_restart();
         //--- smart config stop - set the bit for the smartconfig task to destroy itself
-        xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
+        // xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
         //----------------------------------------------------------------------------------
     }
 }
@@ -205,24 +212,31 @@ static void __smartconfig_task(void * parm)
                                                &__smartconfig_event_handler, NULL,
                                                &_ins_smartconfig_event));
     
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK( esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start() );
 
     ESP_ERROR_CHECK(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH)); //https://www.espressif.com/sites/default/files/30b-esp-touch_user_guide_en_v1.1_20160412_0.pdf
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_smartconfig_start(&cfg));
     esp_esptouch_set_timeout(255); //time out in second, range 15s~255s
-    xEventGroupWaitBits(s_wifi_event_group,        /* The event group being tested. */ 
-                                ESPTOUCH_DONE_BIT,          /* The bits within the event group to wait for. */
-                                true,                       /* BITs should be cleared before returning. */
-                                false,                      /* Don't wait for both bits, either bit will do. */
-                                CONFIG_SMARTCONFIG_WAITTIME/portTICK_PERIOD_MS);  /* Wait time. */
-    ESP_LOGW(TAG, "smartconfig done");
-    if(uxBits & ESPTOUCH_DONE_BIT) {
-        //pass ssid and password here
+    while (1)
+    {
+        uxBits = xEventGroupWaitBits(s_wifi_event_group,        /* The event group being tested. */ 
+                    GOT_SSID_PWD_BIT,  /* The bits within the event group to wait for. */
+                    true,              /* BITs should be cleared before returning. */
+                    false,             /* Don't wait for both bits, either bit will do. */
+                    CONFIG_SMARTCONFIG_WAITTIME/portTICK_PERIOD_MS);  /* Wait time. */
+        if(uxBits & GOT_SSID_PWD_BIT) {
+            ESP_LOGW(TAG, "smartconfig_task suspended.");
+            vTaskSuspend(NULL);
+        }
+        ESP_LOGW(TAG, "smartconfig timeout.");
+        //start everything from the beginning
+        esp_restart();
+    
     }
-    //start everything from the beginning
-    esp_restart();
+    
+    
 }
 
 esp_event_handler_instance_t _ins_wifi_event;
@@ -240,13 +254,12 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
     switch (event_id) {
     case WIFI_EVENT_STA_START:
         ESP_LOGI(TAG, "Starting wifi...");
-        ESP_LOGI(TAG, "Connecting to %s...", CONFIG_WIFI_SSID);
+        char ssid[33] = {0};
+        read_WifiSSID(ssid);
+        ESP_LOGI(TAG, "Connecting to %s...", ssid);
         ESP_ERROR_CHECK(esp_wifi_connect());
         break;
     case WIFI_EVENT_STA_CONNECTED:
-        //--- smart config stop - set the bit for the smartconfig task to destroy itself
-        xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
-        //----------------------------------------------------------------------------------
         _wifi_retry_num = 0;
 #ifdef CONFIG_CONNECT_IPV6
         esp_netif_create_ip6_linklocal(esp_netif);
@@ -259,12 +272,15 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
     case WIFI_EVENT_STA_DISCONNECTED:
         if (_wifi_retry_num < CONFIG_WIFI_MAX_RETRY)
         {
-            ESP_LOGI(TAG, "Wi-Fi disconnected, reconnect to %s...\n", CONFIG_WIFI_SSID);
+            char ssid[33] = {0};
+            read_WifiSSID(ssid);
+            ESP_LOGI(TAG, "Wi-Fi disconnected, reconnect to %s...", ssid);
             esp_err_t err = esp_wifi_connect();
             if (err == ESP_ERR_WIFI_NOT_STARTED) return;
             ESP_ERROR_CHECK(err);
             _wifi_retry_num++;
-        } else {
+        } else
+        {
             //--- smart config start - create the task
             if (xSmartConfig == NULL)
             {
@@ -324,18 +340,31 @@ static esp_netif_t* __wifi_start(void)
                                                 &_ins_wifi_got_ipv6));
 #endif
 
+    
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = CONFIG_WIFI_SSID,
-            .password = CONFIG_WIFI_PASSWORD,
-            .listen_interval = CONFIG_LISTEN_INTERVAL,
-            /* Setting a password implies station will connect to all security modes including WEP/WPA.
-             * However these modes are deprecated and not advisable to be used. Incase your Access point
-             * doesn't support WPA2, these mode can be enabled by commenting below line */
-	        .threshold.authmode = WIFI_AUTH_WPA2_PSK
-        },
-    };
+
+    wifi_config_t wifi_config;
+    bzero(&wifi_config, sizeof(wifi_config_t)); // The bzero() function copies n bytes, each with a value of zero, into string s
+    read_WifiSSID((char*)wifi_config.sta.ssid); //ssid
+    read_WifiPass((char*)wifi_config.sta.password); //pass
+    wifi_config.sta.listen_interval = CONFIG_LISTEN_INTERVAL;
+    /** @note Setting a password implies station will connect to all security modes including WEP/WPA.
+    * However these modes are deprecated and not advisable to be used. Incase your Access point
+    * doesn't support WPA2, these mode can be enabled by commenting below line */
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    // wifi_config_t wifi_config = {
+    //     .sta = {
+    //         .ssid = CONFIG_WIFI_SSID,
+    //         .password = CONFIG_WIFI_PASSWORD,
+    //         // .ssid = *wifi_ssid,
+    //         // .password = *wifi_pass,
+    //         .listen_interval = CONFIG_LISTEN_INTERVAL,
+    //         /* Setting a password implies station will connect to all security modes including WEP/WPA.
+    //          * However these modes are deprecated and not advisable to be used. Incase your Access point
+    //          * doesn't support WPA2, these mode can be enabled by commenting below line */
+	//         .threshold.authmode = WIFI_AUTH_WPA2_PSK
+    //     },
+    // };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
