@@ -158,9 +158,9 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
                                       int32_t event_id, void* event_data)
 {
     if (event_id == SC_EVENT_SCAN_DONE) {
-        ESP_LOGI(TAG, "Scan done");
+        ESP_LOGW(TAG, "Smart config scan done");
     } else if (event_id == SC_EVENT_FOUND_CHANNEL) {
-        ESP_LOGI(TAG, "Found channel");
+        ESP_LOGW(TAG, "Found channel");
     } else if (event_id == SC_EVENT_GOT_SSID_PSWD) {
         //--- smart config stop task flag - set the bit for the smartconfig task to suspend itself
         xEventGroupSetBits(_smartconfig_event, GOT_SSID_PWD_BIT);
@@ -179,9 +179,10 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
         }
         memcpy(ssid, evt->ssid, sizeof(evt->ssid));
         memcpy(password, evt->password, sizeof(evt->password));
-        ESP_LOGI(TAG, "Got SSID and password");
-        ESP_LOGI(TAG, "SSID:%s", ssid);
-        ESP_LOGI(TAG, "PASSWORD:%s", password);
+        ESP_LOGW(TAG, "Got SSID and password");
+        ESP_LOGW(TAG, "SSID:%s", ssid);
+        ESP_LOGW(TAG, "PASSWORD:%s", password);
+        del_WifiCredentials();
         store_WifiCredentials((char*)ssid, (char*)password);
         ESP_ERROR_CHECK(esp_wifi_disconnect());
         ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
@@ -250,14 +251,14 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
 {
     switch (event_id) {
     case WIFI_EVENT_STA_START:
-        ESP_LOGI(TAG, "Starting wifi...");
+        ESP_LOGW(TAG, "Starting wifi...");
 
 #ifdef CONFIG_WIFI_EN_SMARTCONFIG
         char ssid[33] = {0};
         read_WifiSSID(ssid);
-        ESP_LOGI(TAG, "Connecting to %s...", ssid);
+        ESP_LOGW(TAG, "Connecting to %s...", ssid);
 #else
-        ESP_LOGI(TAG, "Connecting to %s...", CONFIG_WIFI_SSID);
+        ESP_LOGW(TAG, "Connecting to %s...", CONFIG_WIFI_SSID);
 #endif
         ESP_ERROR_CHECK(esp_wifi_connect());
         break;
@@ -280,7 +281,7 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
 
             char ssid[33] = {0};
             read_WifiSSID(ssid);
-            ESP_LOGI(TAG, "Wi-Fi disconnected, reconnect to %s...", ssid);
+            ESP_LOGW(TAG, "Wi-Fi disconnected, reconnect to %s...", ssid);
             esp_err_t err = esp_wifi_connect();
             if (err == ESP_ERR_WIFI_NOT_STARTED) return;
             ESP_ERROR_CHECK(err);
@@ -300,7 +301,7 @@ static void __on_wifi_event(void *esp_netif, esp_event_base_t event_base,
             //--------------------------------------------------------------------------------
         }
 #else
-            ESP_LOGI(TAG, "Wi-Fi disconnected, reconnect to %s...", CONFIG_WIFI_SSID);
+            ESP_LOGW(TAG, "Wi-Fi disconnected, reconnect to %s...", CONFIG_WIFI_SSID);
             esp_err_t err = esp_wifi_connect();
             if (err == ESP_ERR_WIFI_NOT_STARTED) return;
             ESP_ERROR_CHECK(err);
@@ -432,7 +433,7 @@ static void __wifi_stop(void)
     ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(_sta_netif));
     esp_netif_destroy(_sta_netif);
     _sta_netif = NULL;
-    ESP_LOGI(TAG, "Wifi Stopped.");
+    ESP_LOGW(TAG, "Wifi Stopped.");
 }
 #endif // CONFIG_CONNECT_WIFI
 
@@ -460,15 +461,15 @@ static void __on_eth_event(void *esp_netif, esp_event_base_t event_base,
 
     switch (event_id) {
     case ETHERNET_EVENT_START:
-        ESP_LOGI(TAG, "Ethernet Started");
+        ESP_LOGW(TAG, "Ethernet Started");
         break;
     case ETHERNET_EVENT_STOP:
-        ESP_LOGI(TAG, "Ethernet Stopped");
+        ESP_LOGW(TAG, "Ethernet Stopped");
         break;
     case ETHERNET_EVENT_CONNECTED:
         esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
-        ESP_LOGI(TAG, "Ethernet Up");
-        ESP_LOGI(TAG, "HW MAC Addr: %02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+        ESP_LOGW(TAG, "Ethernet Up");
+        ESP_LOGW(TAG, "HW MAC Addr: %02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 #ifdef CONFIG_CONNECT_IPV6
         esp_netif_create_ip6_linklocal(esp_netif);
 #endif
@@ -478,7 +479,7 @@ static void __on_eth_event(void *esp_netif, esp_event_base_t event_base,
 #endif
         break;
     case ETHERNET_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG, "Ethernet Down");
+        ESP_LOGW(TAG, "Ethernet Down");
         break;
     default:
         break;
@@ -603,7 +604,7 @@ static void __eth_stop(void)
     ESP_ERROR_CHECK(_mac->del(_mac));
     esp_netif_destroy(_eth_netif);
     _eth_netif = NULL;
-    ESP_LOGI(TAG, "Ethernet Stopped.");
+    ESP_LOGW(TAG, "Ethernet Stopped.");
 }
 
 #endif // CONFIG_CONNECT_ETHERNET
