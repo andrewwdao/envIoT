@@ -31,7 +31,6 @@ typedef enum {
 // ------ Private variables -----------------------------------
 xQueueHandle _blink_queue;
 led_state_t _led_status = LED_BLINK;
-
 // ------ PUBLIC variable definitions -------------------------
 //--------------------------------------------------------------
 // FUNCTION DEFINITIONS

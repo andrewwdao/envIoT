@@ -1,50 +1,20 @@
 menu "EnvIoT MQTT Network Configuration"
 
-	config FARM_NAME
-        string "Farm name"
-        default "01"
+	config IOTHUBNAME
+        string "IoT Hub name (Azure)"
+        default "iotpig"
         help
-            Name of the farm
+            IoT Hub name (Azure)
     
-    config BARN_NAME
-        string "Barn name"
-        default "01"
+    config DEVICEID
+        string "Device ID (Azure)"
+        default "thietbi01"
         help
-            Name of the Barn
-    
-    config DEVICE_NAME
-        string "Device name"
-        default "01"
-        help
-            Name of the device
-
-    config BROKER_URL
-        string "MQTT Broker URL"
-        default "mqtt://mqtt.eclipse.org"
-        help
-            URL of the broker to connect to
-
-    config BROKER_HOST
-        string "MQTT server domain (ipv4 as string)"
-        default "52.231.156.62"
-        help
-            URL of the broker to connect to
-    
-    config BROKER_PORT
-        int "MQTT Broker Port"
-        default 1883
-        help
-            Port of the broker to connect to
-    
-    config MQTT_USERNAME
-        string "MQTT username"
-        default "mqtt_user_name"
-        help
-            MQTT Username to connect to the broker
+            Device ID (Azure)
 
     config MQTT_PASSWORD
-        string "MQTT password"
-        default "mqtt"
+        string "MQTT password (SAS token)"
+        default "SharedAccessSignature sr=iotpig.azure-devices.net%2Fdevices%2Fthietbi01&sig=5heRwg3nJZQJRrF4m8k3h9EpVQTpMWxS0cwe75VcaIM%3D&se=1758883106"
         help
             MQTT Password to connect to the broker
 			

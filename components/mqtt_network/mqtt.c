@@ -28,6 +28,8 @@ static const char *TAG = "MQTT";
 esp_mqtt_client_handle_t _client;
 uint8_t MQTT_CONNECTED_FLAG = 0;
 // ------ PUBLIC variable definitions -------------------------
+extern const uint8_t cert_pem_start[]   asm("_binary_cert_pem_start");
+extern const uint8_t cert_pem_end[]     asm("_binary_cert_pem_end");
 //--------------------------------------------------------------
 // FUNCTION DEFINITIONS
 //--------------------------------------------------------------
@@ -41,14 +43,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t) event_data;
     esp_mqtt_client_handle_t client = event->client;
-    // int msg_id;
     // your_context_t *context = event->context;
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGW(TAG, "MQTT Connected!");
             led_lit();
             MQTT_CONNECTED_FLAG = 1;
-            esp_mqtt_client_publish(client, STATUS_TOPIC, "1", 0, 1, 0); //client, topic, data, len, qos, retain  
+            esp_mqtt_client_publish(client, LWT_TOPIC, "1", 0, 1, 0); //client, topic, data, len, qos, retain  
             esp_mqtt_client_subscribe(client, CMD_TOPIC, 1); //client, topic, qos
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -111,22 +112,27 @@ int mqtt_pub(const char *topic, const char *data, int qos, int retain)
 esp_err_t mqtt_start(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
-        // .uri = CONFIG_BROKER_URL,
-        .host = CONFIG_BROKER_HOST,
-        .port = CONFIG_BROKER_PORT,
-        .username = CONFIG_MQTT_USERNAME,
-        .password = CONFIG_MQTT_PASSWORD,
-        .lwt_topic = STATUS_TOPIC,
+        // .host = CONFIG_BROKER_HOST,
+        // .port = CONFIG_BROKER_PORT,
+        // .username = CONFIG_MQTT_USERNAME,
+        // .password = CONFIG_MQTT_PASSWORD,
+        .uri = MQTT_HOST,
+        .port = 8883,
+        .username = MQTT_USERNAME,
+        .password = MQTT_PASSWORD,
+        .lwt_topic = LWT_TOPIC,
         .lwt_msg = "0",
         .lwt_msg_len = 1,
         .lwt_qos = 1,
         .lwt_retain = 0,
-        .keepalive = 120
+        .keepalive = 120,
+        .client_id = CONFIG_DEVICEID,
+        .cert_pem = (const char *)cert_pem_start,
+
     };
     _client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(_client, ESP_EVENT_ANY_ID, mqtt_event_handler, _client);
     esp_mqtt_client_start(_client);
-    mqtt_sub(STATUS_TOPIC,1); //topic, qos
     return ESP_OK;
 }
 

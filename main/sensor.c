@@ -198,8 +198,8 @@ static void __sensor_task(void* arg)
                     {
                         char temp_data[13];
                         snprintf(temp_data, 13,"{temp:%.2f}", readings[i]);
-                        ESP_LOGW(TAG, "%s", temp_data);
-                        // ESP_LOGW(TAG, " - Temperature %d: %.2f (oC)", i+1, readings[i]);
+                        ESP_LOGI(TAG, "%s", temp_data);
+                        // ESP_LOGI(TAG, " - Temperature %d: %.2f (oC)", i+1, readings[i]);
                         mqtt_pub(DATA_TOPIC,temp_data,1,0); //topic, data, qos, retain
                     }
                 }
