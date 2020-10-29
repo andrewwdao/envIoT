@@ -1,1 +1,3 @@
 https://www.waveshare.com/esp32-s.htm
+https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-mqtt-support#sending-device-to-cloud-messages
+https://medium.com/@cprosenjit/device-to-cloud-connectivity-with-azure-iot-hub-c48c89cc797f

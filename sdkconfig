@@ -133,8 +133,8 @@ CONFIG_SAMPLE_PERIOD=5000
 # EnvIoT MQTT Network Configuration
 #
 CONFIG_IOTHUBNAME="iotpig"
-CONFIG_DEVICEID="thietbi03"
-CONFIG_MQTT_PASSWORD="SharedAccessSignature sr=iotpig.azure-devices.net%2Fdevices%2Fthietbi03&sig=yfohU4ZRnulC9cwxNAocIIwFFyC%2BgdpyWMQrLULRg%2FA%3D&se=1758897088"
+CONFIG_DEVICEID="thietbi01"
+CONFIG_MQTT_PASSWORD="SharedAccessSignature sr=iotpig.azure-devices.net%2Fdevices%2Fthietbi01&sig=zJC6q%2B6p%2FDfSUjNCQXUQ0sJXGyTG7bYyvl6GmOPCNhw%3D&se=1918978893"
 CONFIG_CONNECT_WIFI=y
 CONFIG_WIFI_EN_SMARTCONFIG=y
 CONFIG_WIFI_MAX_RETRY=5

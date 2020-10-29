@@ -212,7 +212,7 @@ static void __sensor_task(void* arg)
             ESP_LOGE(TAG, "No DS18B20 devices detected!");
             __stop(_owb, _sensors, num_devices);
             vTaskDelay(2000/portTICK_RATE_MS);
-        }   
+        }
     }
 }
 /**

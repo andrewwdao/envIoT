@@ -158,7 +158,7 @@ static void __smartconfig_event_handler(void* arg, esp_event_base_t event_base,
                                       int32_t event_id, void* event_data)
 {
     if (event_id == SC_EVENT_SCAN_DONE) {
-        ESP_LOGW(TAG, "Smart config scan done");
+        ESP_LOGW(TAG, "Smart config scan started");
     } else if (event_id == SC_EVENT_FOUND_CHANNEL) {
         ESP_LOGW(TAG, "Found channel");
     } else if (event_id == SC_EVENT_GOT_SSID_PSWD) {
