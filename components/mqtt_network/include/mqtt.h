@@ -1,7 +1,7 @@
 /*------------------------------------------------------------*-
-  MQTT (over TCP) - header file
+  MQTT (SSL) - header file
   (c) Minh-An Dao 2020
-  version 1.00 - 09/10/2020
+  version 1.10 - 15/10/2020
 ---------------------------------------------------------------
  * Configuration to connect to MQTT Broker.
  * 
